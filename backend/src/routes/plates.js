@@ -35,12 +35,12 @@ router.get('/search', async (req, res) => {
         let query, param;
         if (mv) {
             query = `SELECT mv_file_number, plate_number, owner_name, vehicle_type,
-                      brand, model, color, status, claim_location, remarks, updated_at, is_claimed
+                      brand, model, color, status, site_name, claim_location, remarks, updated_at, is_claimed
                FROM plates WHERE REPLACE(mv_file_number, '-', '') = REPLACE(?, '-', '')`;
             param = mv.trim().toUpperCase();
         } else {
             query = `SELECT mv_file_number, plate_number, owner_name, vehicle_type,
-                      brand, model, color, status, claim_location, remarks, updated_at, is_claimed
+                      brand, model, color, status, site_name, claim_location, remarks, updated_at, is_claimed
                FROM plates WHERE REPLACE(plate_number, ' ', '') = REPLACE(?, ' ', '')`;
             param = plate.trim().toUpperCase();
         }

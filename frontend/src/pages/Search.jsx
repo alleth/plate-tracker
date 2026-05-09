@@ -293,8 +293,8 @@ export default function Search() {
                     {/* Tabs */}
                     <div style={{ display: 'flex', borderBottom: `1px solid ${theme.border}` }}>
                         {[
-                            { key: 'mv', label: 'MV File Number', desc: 'For new plates', icon: <IconDocument size={14} /> },
-                            { key: 'plate', label: 'Plate Number', desc: 'For replacement', icon: <IconHash size={14} /> },
+                            { key: 'mv', label: 'MV File Number', icon: <IconDocument size={14} /> },
+                            { key: 'plate', label: 'Plate Number', icon: <IconHash size={14} /> },
                         ].map(tab => (
                             <button key={tab.key} onClick={() => handleTabSwitch(tab.key)} style={{
                                 flex: 1, padding: '14px 16px',
@@ -473,7 +473,7 @@ export default function Search() {
                                                     </div>
                                                     <div style={{ color: theme.textMuted, fontSize: '0.78rem', lineHeight: 1.6 }}>
                                                         Visit the <strong style={{ color: theme.textPrimary }}>nearest LTO office</strong> and
-                                                        present your <strong style={{ color: theme.textPrimary }}>Official Receipt (OR)</strong> to
+                                                        present your <strong style={{ color: theme.textPrimary }}>Official Receipt (OR) and Certificate of Registration (CR)</strong> to
                                                         inquire if your plate is already available for claiming.
                                                         You may also ask if you are eligible to claim a new plate number.
                                                     </div>
@@ -487,7 +487,7 @@ export default function Search() {
                                             </p>
                                             <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginBottom: '18px' }}>
                                                 {[
-                                                    { icon: <IconGear size={16} />, text: 'Your replacement plate may not yet have been produced at the Plate-Making Facility.' },
+                                                    { icon: <IconGear size={16} />, text: 'Your plate may not yet have been produced at the Plate-Making Facility.' },
                                                     { icon: <IconEdit size={16} />, text: 'You may have entered your plate number incorrectly. Please check the format (e.g. ABC 1234).' },
                                                     { icon: <IconList size={16} />, text: 'Your replacement plate request may not yet be encoded in the system.' },
                                                 ].map((item, i) => (
@@ -521,8 +521,6 @@ export default function Search() {
                                                         Visit the <strong style={{ color: theme.textPrimary }}>nearest LTO office</strong> and
                                                         present your <strong style={{ color: theme.textPrimary }}>payment receipt</strong> for
                                                         the replacement plate to follow up on the status of your request.
-                                                        The plate may still be in production at the
-                                                        <strong style={{ color: theme.textPrimary }}> Plate-Making Facility</strong>.
                                                     </div>
                                                 </div>
                                             </div>
@@ -575,7 +573,9 @@ export default function Search() {
                                                 {result.status}
                                             </div>
                                             <div style={{ color: theme.textMuted, fontSize: '0.85rem' }}>
-                                                {statusCfg.message}
+                                                {result.status === 'At LTO' && result.site_name
+                                                    ? `Your plate is available at ${result.site_name}.`
+                                                    : statusCfg.message}
                                             </div>
                                         </div>
                                     </div>
@@ -630,7 +630,7 @@ export default function Search() {
                                                     Claim Location
                                                 </div>
                                                 <div style={{ color: theme.textPrimary, fontWeight: 600 }}>
-                                                    {result.claim_location}
+                                                    {[result.site_name, result.claim_location].filter(Boolean).join(', ')}
                                                 </div>
                                             </div>
                                         </div>
