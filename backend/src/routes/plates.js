@@ -36,12 +36,12 @@ router.get('/search', async (req, res) => {
         if (mv) {
             query = `SELECT mv_file_number, plate_number, owner_name, vehicle_type,
                       brand, model, color, status, site_name, claim_location, remarks, updated_at, is_claimed
-               FROM plates WHERE REPLACE(mv_file_number, '-', '') = REPLACE(?, '-', '')`;
+               FROM plates WHERE UPPER(REPLACE(mv_file_number COLLATE utf8mb4_unicode_ci, '-', '')) = UPPER(REPLACE(? COLLATE utf8mb4_unicode_ci, '-', ''))`;
             param = mv.trim().toUpperCase();
         } else {
             query = `SELECT mv_file_number, plate_number, owner_name, vehicle_type,
                       brand, model, color, status, site_name, claim_location, remarks, updated_at, is_claimed
-               FROM plates WHERE REPLACE(plate_number, ' ', '') = REPLACE(?, ' ', '')`;
+               FROM plates WHERE UPPER(REPLACE(plate_number COLLATE utf8mb4_unicode_ci, ' ', '')) = UPPER(REPLACE(? COLLATE utf8mb4_unicode_ci, ' ', ''))`;
             param = plate.trim().toUpperCase();
         }
 
@@ -106,8 +106,8 @@ router.get('/', authMiddleware, async (req, res) => {
         const [rows] = await pool.execute(
             `SELECT p.*, a.dealer_name as assigned_dealer_name
              FROM plates p
-             LEFT JOIN admins a ON p.assigned_dealer_id = a.id
-             ${where} ORDER BY p.created_at DESC LIMIT ? OFFSET ?`,
+                      LEFT JOIN admins a ON p.assigned_dealer_id = a.id
+                 ${where} ORDER BY p.created_at DESC LIMIT ? OFFSET ?`,
             [...params, limitNum, offset]
         );
 
@@ -136,7 +136,6 @@ router.get('/stats/summary', authMiddleware, async (req, res) => {
         const limitNum = Math.max(1, parseInt(limit));
         const offset = (pageNum - 1) * limitNum;
 
-        // Build role-based scope filter
         let scopeClause = '';
         let scopeParams = [];
         if (req.admin.role === 'lto') {
@@ -147,7 +146,6 @@ router.get('/stats/summary', authMiddleware, async (req, res) => {
             scopeParams = [req.admin.id];
         }
 
-        // Helper: build WHERE combining scope + optional extra condition
         const where = (extra = '') => {
             const parts = [scopeClause, extra].filter(Boolean);
             return parts.length ? ` WHERE ${parts.join(' AND ')}` : '';
@@ -186,17 +184,15 @@ router.post('/', authMiddleware, requireRole('administrator', 'lto'), async (req
             assigned_dealer_id, site_name,
         } = req.body;
 
-        // LTO: force their own site_code
         const site_code = req.admin.role === 'lto' ? req.admin.site_code : req.body.site_code;
 
         if (!mv_file_number || !owner_name) {
             return res.status(400).json({ success: false, message: 'MV File Number and Owner Name are required' });
         }
 
-        // Check duplicate Plate Number
         if (plate_number && plate_number.trim()) {
             const [existingPlate] = await pool.execute(
-                `SELECT id FROM plates WHERE REPLACE(plate_number, ' ', '') = REPLACE(?, ' ', '')`,
+                `SELECT id FROM plates WHERE REPLACE(plate_number COLLATE utf8mb4_unicode_ci, ' ', '') = REPLACE(? COLLATE utf8mb4_unicode_ci, ' ', '')`,
                 [plate_number.trim().toUpperCase()]
             );
             if (existingPlate.length > 0) {
@@ -239,7 +235,6 @@ router.put('/:id', authMiddleware, requireRole('administrator', 'lto'), async (r
             site_code, site_name, assigned_dealer_id,
         } = req.body;
 
-        // LTO: can only edit plates in their site
         if (req.admin.role === 'lto') {
             const [check] = await pool.execute('SELECT site_code FROM plates WHERE id = ?', [req.params.id]);
             if (!check.length || check[0].site_code !== req.admin.site_code) {
@@ -247,10 +242,9 @@ router.put('/:id', authMiddleware, requireRole('administrator', 'lto'), async (r
             }
         }
 
-        // Check duplicate Plate Number on another record
         if (plate_number && plate_number.trim()) {
             const [existingPlate] = await pool.execute(
-                `SELECT id FROM plates WHERE REPLACE(plate_number, ' ', '') = REPLACE(?, ' ', '') AND id != ?`,
+                `SELECT id FROM plates WHERE REPLACE(plate_number COLLATE utf8mb4_unicode_ci, ' ', '') = REPLACE(? COLLATE utf8mb4_unicode_ci, ' ', '') AND id != ?`,
                 [plate_number.trim().toUpperCase(), req.params.id]
             );
             if (existingPlate.length > 0) {
@@ -286,7 +280,6 @@ router.put('/:id', authMiddleware, requireRole('administrator', 'lto'), async (r
 // PATCH toggle claimed status (administrator and dealer)
 router.patch('/:id/claim', authMiddleware, requireRole('administrator', 'dealer'), async (req, res) => {
     try {
-        // Dealer: can only claim plates assigned to them
         if (req.admin.role === 'dealer') {
             const [check] = await pool.execute('SELECT assigned_dealer_id FROM plates WHERE id = ?', [req.params.id]);
             if (!check.length || check[0].assigned_dealer_id !== req.admin.id) {
