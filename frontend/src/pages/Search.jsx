@@ -150,7 +150,7 @@ export default function Search() {
     const plateSteps = [
         { icon: <IconHash size={22} />, label: 'Have your current plate number ready' },
         { icon: <IconSearch size={22} />, label: 'Enter it in the search box above' },
-        { icon: <IconPin size={22} />, label: 'Check your replacement plate status' },
+        { icon: <IconPin size={22} />, label: 'Check your plate status and where to claim it' },
     ];
 
     const steps = activeTab === 'mv' ? mvSteps : plateSteps;
