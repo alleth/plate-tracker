@@ -390,7 +390,7 @@ export default function Search() {
                             }}>
                                 {activeTab === 'mv'
                                     ? 'Your MV File Number can be found on your Official Receipt (OR) or Certificate of Registration (CR).'
-                                    : 'Enter your current plate number to check if your replacement plate is ready.'}
+                                    : 'Enter your plate number to check its current status.'}
                             </p>
                         </form>
                     </div>
@@ -443,7 +443,6 @@ export default function Search() {
                                                 {[
                                                     { icon: <IconList size={16} />, text: 'Your MV File Number may not yet have an assigned plate in the system.' },
                                                     { icon: <IconEdit size={16} />, text: 'You may have entered your MV File Number incorrectly. Please double-check your OR/CR.' },
-                                                    { icon: <IconClock size={16} />, text: 'Your plate record may not have been encoded yet by the LTO.' },
                                                 ].map((item, i) => (
                                                     <div key={i} style={{
                                                         display: 'flex', gap: '10px', alignItems: 'flex-start',
@@ -487,9 +486,7 @@ export default function Search() {
                                             </p>
                                             <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginBottom: '18px' }}>
                                                 {[
-                                                    { icon: <IconGear size={16} />, text: 'Your plate may not yet have been produced at the Plate-Making Facility.' },
-                                                    { icon: <IconEdit size={16} />, text: 'You may have entered your plate number incorrectly. Please check the format (e.g. ABC 1234).' },
-                                                    { icon: <IconList size={16} />, text: 'Your replacement plate request may not yet be encoded in the system.' },
+                                                    { icon: <IconEdit size={16} />, text: 'You may have entered your plate number incorrectly, please check your Certificate of Registration or Official Receipt for the correct format or visit the nearest LTO Office in your area.' },
                                                 ].map((item, i) => (
                                                     <div key={i} style={{
                                                         display: 'flex', gap: '10px', alignItems: 'flex-start',
@@ -519,8 +516,8 @@ export default function Search() {
                                                     </div>
                                                     <div style={{ color: theme.textMuted, fontSize: '0.78rem', lineHeight: 1.6 }}>
                                                         Visit the <strong style={{ color: theme.textPrimary }}>nearest LTO office</strong> and
-                                                        present your <strong style={{ color: theme.textPrimary }}>payment receipt</strong> for
-                                                        the replacement plate to follow up on the status of your request.
+                                                        present your <strong style={{ color: theme.textPrimary }}>Official Receipt (OR) and Certificate of Registration (CR)</strong> to
+                                                        inquire about your plate status.
                                                     </div>
                                                 </div>
                                             </div>
