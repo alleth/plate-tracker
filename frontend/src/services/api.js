@@ -21,9 +21,11 @@ export const plateService = {
 export const adminService = {
     login: (data) => api.post('/auth/login', data),
     verify: () => api.get('/auth/verify'),
-    getAll: (q = '', page = 1, limit = 10) => {
+    getAll: (q = '', page = 1, limit = 10, duplicates = '', mvExact = '') => {
         const params = new URLSearchParams({ page, limit });
         if (q) params.set('q', q);
+        if (duplicates) params.set('duplicates', duplicates);
+        if (mvExact) params.set('mv_exact', mvExact);
         return api.get(`/plates?${params.toString()}`);
     },
     getStats: (page = 1, limit = 5) => api.get(`/plates/stats/summary?page=${page}&limit=${limit}`),

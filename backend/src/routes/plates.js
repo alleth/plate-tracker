@@ -71,7 +71,7 @@ router.get('/dealers', authMiddleware, async (req, res) => {
 // GET all plates (paginated, role-filtered)
 router.get('/', authMiddleware, async (req, res) => {
     try {
-        const { q, page = 1, limit = 10 } = req.query;
+        const { q, page = 1, limit = 10, duplicates, mv_exact } = req.query;
         const pageNum = Math.max(1, parseInt(page));
         const limitNum = Math.max(1, parseInt(limit));
         const offset = (pageNum - 1) * limitNum;
@@ -98,16 +98,76 @@ router.get('/', authMiddleware, async (req, res) => {
             params.push(req.admin.id);
         }
 
+        if (duplicates === 'mv') {
+            let subSql = `SELECT UPPER(REPLACE(mv_file_number COLLATE utf8mb4_unicode_ci, '-', '')) FROM plates WHERE TRIM(REPLACE(mv_file_number COLLATE utf8mb4_unicode_ci, '-', '')) != ''`;
+            const subParams = [];
+            if (req.admin.role === 'lto') {
+                subSql += ` AND site_code = ?`;
+                subParams.push(req.admin.site_code);
+            } else if (req.admin.role === 'dealer') {
+                subSql += ` AND assigned_dealer_id = ?`;
+                subParams.push(req.admin.id);
+            }
+            subSql += ` GROUP BY UPPER(REPLACE(mv_file_number COLLATE utf8mb4_unicode_ci, '-', '')) HAVING COUNT(*) > 1`;
+            conditions.push(`TRIM(REPLACE(p.mv_file_number COLLATE utf8mb4_unicode_ci, '-', '')) != '' AND UPPER(REPLACE(p.mv_file_number COLLATE utf8mb4_unicode_ci, '-', '')) IN (${subSql})`);
+            params.push(...subParams);
+        } else if (duplicates === 'plate') {
+            const plateNotBlank = `plate_number IS NOT NULL AND TRIM(REPLACE(plate_number COLLATE utf8mb4_unicode_ci, '-', '')) != ''`;
+            let subSql = `SELECT REPLACE(UPPER(plate_number COLLATE utf8mb4_unicode_ci), ' ', '') FROM plates WHERE ${plateNotBlank}`;
+            const subParams = [];
+            if (req.admin.role === 'lto') {
+                subSql += ` AND site_code = ?`;
+                subParams.push(req.admin.site_code);
+            } else if (req.admin.role === 'dealer') {
+                subSql += ` AND assigned_dealer_id = ?`;
+                subParams.push(req.admin.id);
+            }
+            subSql += ` GROUP BY REPLACE(UPPER(plate_number COLLATE utf8mb4_unicode_ci), ' ', '') HAVING COUNT(*) > 1`;
+            conditions.push(`p.${plateNotBlank} AND REPLACE(UPPER(p.plate_number COLLATE utf8mb4_unicode_ci), ' ', '') IN (${subSql})`);
+            params.push(...subParams);
+        } else if (duplicates === 'both') {
+            let mvSubSql = `SELECT UPPER(REPLACE(mv_file_number COLLATE utf8mb4_unicode_ci, '-', '')) FROM plates WHERE TRIM(REPLACE(mv_file_number COLLATE utf8mb4_unicode_ci, '-', '')) != ''`;
+            let plSubSql = `SELECT REPLACE(UPPER(plate_number COLLATE utf8mb4_unicode_ci), ' ', '') FROM plates WHERE plate_number IS NOT NULL AND plate_number != ''`;
+            const subParams = [];
+            if (req.admin.role === 'lto') {
+                mvSubSql += ` AND site_code = ?`;
+                plSubSql += ` AND site_code = ?`;
+                subParams.push(req.admin.site_code, req.admin.site_code);
+            } else if (req.admin.role === 'dealer') {
+                mvSubSql += ` AND assigned_dealer_id = ?`;
+                plSubSql += ` AND assigned_dealer_id = ?`;
+                subParams.push(req.admin.id, req.admin.id);
+            }
+            mvSubSql += ` GROUP BY UPPER(REPLACE(mv_file_number COLLATE utf8mb4_unicode_ci, '-', '')) HAVING COUNT(*) > 1`;
+            plSubSql += ` GROUP BY REPLACE(UPPER(plate_number COLLATE utf8mb4_unicode_ci), ' ', '') HAVING COUNT(*) > 1`;
+            conditions.push(`(
+                (TRIM(REPLACE(p.mv_file_number COLLATE utf8mb4_unicode_ci, '-', '')) != '' AND UPPER(REPLACE(p.mv_file_number COLLATE utf8mb4_unicode_ci, '-', '')) IN (${mvSubSql}))
+                OR (p.plate_number IS NOT NULL AND p.plate_number != '' AND REPLACE(UPPER(p.plate_number COLLATE utf8mb4_unicode_ci), ' ', '') IN (${plSubSql}))
+            )`);
+            params.push(...subParams);
+        }
+
+        if (mv_exact) {
+            const mvExactNorm = mv_exact.trim().toUpperCase().replace(/-/g, '');
+            if (mvExactNorm) {
+                conditions.push(`UPPER(REPLACE(p.mv_file_number, '-', '')) = ?`);
+                params.push(mvExactNorm);
+            }
+        }
+
         const where = conditions.length ? ` WHERE ${conditions.join(' AND ')}` : '';
 
         const [[{ total }]] = await pool.execute(
             `SELECT COUNT(*) as total FROM plates p${where}`, params
         );
+        const orderBy = duplicates === 'plate'
+            ? `REPLACE(UPPER(p.plate_number), ' ', '') ASC, p.id ASC`
+            : `p.created_at DESC`;
         const [rows] = await pool.execute(
             `SELECT p.*, a.dealer_name as assigned_dealer_name
              FROM plates p
                       LEFT JOIN admins a ON p.assigned_dealer_id = a.id
-                 ${where} ORDER BY p.created_at DESC LIMIT ? OFFSET ?`,
+                 ${where} ORDER BY ${orderBy} LIMIT ? OFFSET ?`,
             [...params, limitNum, offset]
         );
 
